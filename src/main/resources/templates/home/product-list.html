@@ -255,37 +255,29 @@
         </div>
     </div>
 </div>
-<!--    Chat icon-->
-<div id="chatIcon">
-    <img th:src="@{/images/chatboticon.jpg}" alt="Chatbot Icon" id="chatIconImg">
-</div>
-<!--    Chat window-->
-<div id="chatWindow" class="hidden">
-    <div id="chatHeader">
-        <span id="closeBtn">&times;</span>
-        <h2>Quang provip</h2>
+    <!--    Chat icon-->
+    <div id="chatIcon">
+        <img th:src ="@{/images/chatboticon.jpg}" alt="Chatbot Icon" id="chatIconImg">
     </div>
-    <div id="chatContent">
-        <div id="messages">
-            <div class="message userMessage">
-                This is a message from the user.
-            </div>
-            <div class="message botMessage">
-                This is a message from Quang.
-            </div>
-            <div class="message userMessage">
-                This is a message from the user.
-            </div>
-            <div class="message botMessage">
-                This is a message from Quang.
-            </div>
+    <!--    Chat window-->
+    <div id="chatWindow" class="hidden">
+        <div id="chatHeader">
+            <span id="closeBtn">&times;</span>
+            <h2>Aut</h2>
+        </div>
+        <ul id="chatContent">
+            <li id="messages">
+                <div class="message botMessage">
+                    Hi how can i help you today?.
+                </div>
+            </li>
+        </ul>
+        <div id="userInput" class="chat-input">
+            <input type="text" id="textInput" placeholder="Type your message...">
+            <button id="sendBtn">Send</button>
         </div>
     </div>
-    <div id="userInput">
-        <input type="text" id="textInput" placeholder="Type your message...">
-        <button id="sendBtn">Send</button>
-    </div>
-</div>
+
 
 <div style="margin-top: 50px"></div>
     <!-- Footer -->
@@ -324,6 +316,72 @@
     closeBtn.addEventListener('click', () => {
         chatWindow.classList.add('hidden');
     });
+
+    const chatInput = document.querySelector("#textInput");
+    const sendChatBtn = document.querySelector(".chat-input button");
+    const chatbox = document.querySelector("#chatContent");
+
+    let userMessage;
+
+    const createChatLi = (message, classname) => {
+        const chatLi = document.createElement("li");
+        // chatLi.classList.add("chat", classname);
+        let chatContent = classname === "outgoing" ? `<div class="message userMessage">${message}</div>`: `<div class="message botMessage">${message}</div>`
+        chatLi.innerHTML = chatContent;
+        return chatLi;
+    }
+
+    const generateResponse = (incomingChatLi) => {
+        const API_URL = "https://b4c0-34-126-167-124.ngrok-free.app/routegicungduoc";
+        const data = {
+            "message" : chatInput.value.trim()
+        };
+        const messageElement = incomingChatLi.querySelector("div");
+
+        const requestOptions = {
+            method: "POST",
+            headers:{
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+
+        };
+
+        fetch(API_URL, requestOptions)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data);
+                messageElement.textContent = data.answer;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            }).finally(() => chatbox.scrollTo(0, chatbox.scrollHeight));
+    }
+
+    const handleChat = () => {
+        userMessage = chatInput.value.trim();
+        console.log(userMessage);
+        if (!userMessage) return;
+
+        chatbox.appendChild(createChatLi(userMessage, "outgoing"));
+        chatbox.scrollTo(0, chatbox.scrollHeight);
+
+        setTimeout(() => {
+            const incomingChatLi = createChatLi("Thinking...","incoming")
+            chatbox.appendChild(incomingChatLi);
+            chatbox.scrollTo(0, chatbox.scrollHeight);
+            generateResponse(incomingChatLi);
+        },600)
+
+    }
+
+    sendChatBtn.addEventListener("click",handleChat);
+
 
     function getUrl() {
         var key = $("#input-keyword").val();
