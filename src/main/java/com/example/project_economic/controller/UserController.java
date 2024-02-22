@@ -10,7 +10,12 @@ import com.example.project_economic.response.ProductResponse;
 import com.example.project_economic.service.*;
 import jakarta.servlet.http.HttpSession;
 import org.apache.catalina.User;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,8 +25,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
@@ -144,6 +151,29 @@ public class UserController {
         model.addAttribute("lastPage",pageProductResponse.getLastPage());
         model.addAttribute("previousPage",1);
         model.addAttribute("totalPage",new int[pageProductResponse.getTotalPage()]);
+
+
+        //External API post
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        JSONObject userID = new JSONObject();
+        userID.put("user_id", ((UserInfoDetails)authentication.getPrincipal()).getUserId());
+
+        HttpEntity<String> request =
+                new HttpEntity<String>(userID.toString(), headers);
+        String result =
+                restTemplate.postForObject("https://0699-34-74-244-164.ngrok-free.app/traketqua", request, String.class);
+
+        JSONObject resultAsJSON = new JSONObject(result);
+        JSONArray jsonArray = resultAsJSON.getJSONArray("item_ids");
+
+        List<ProductResponse> recommendedProducts= new ArrayList();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            recommendedProducts.add(productService.findById(jsonArray.getLong(i)));
+        }
+
+        model.addAttribute("recommendedProducts", recommendedProducts);
         return "home/product-list";
     }
     @PostMapping("/update/")
