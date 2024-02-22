@@ -12,14 +12,31 @@ import com.example.project_economic.service.CartItemService;
 import com.example.project_economic.service.CategoryService;
 import com.example.project_economic.service.CommentService;
 import com.example.project_economic.service.ProductService;
+import com.fasterxml.jackson.databind.util.JSONPObject;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+//import org.springframework.http.HttpRequest;
+import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.*;
+//import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpClient;
+import java.io.IOException;
+
+import java.nio.file.Paths;
+import java.security.Principal;
 import java.sql.ResultSet;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -152,8 +169,9 @@ public class ProductController {
     @GetMapping("/all/{pageNumber}")
     public String getAllPagePagination(
             @PathVariable Integer pageNumber,
-            Model model
-    ){
+            Model model,
+            Principal principal
+    ) throws URISyntaxException {
         int pageSize=9;
         PageProductResponse pageProductResponse=productService.findAllPagination(pageNumber,pageSize);
         model.addAttribute("currentPage",pageNumber);
@@ -164,6 +182,30 @@ public class ProductController {
         model.addAttribute("categories",this.categoryService.findAllByActived());
         model.addAttribute("products", this.productService.findAllIsActived(pageSize, pageNumber));
         model.addAttribute("prices",prices);
+
+        Authentication authentication=SecurityContextHolder.getContext().getAuthentication();
+
+        //External API post
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        JSONObject userID = new JSONObject();
+        userID.put("user_id", ((UserInfoDetails)authentication.getPrincipal()).getUserId());
+
+        HttpEntity<String> request =
+                new HttpEntity<String>(userID.toString(), headers);
+        String result =
+                restTemplate.postForObject("https://0699-34-74-244-164.ngrok-free.app/traketqua", request, String.class);
+
+        JSONObject resultAsJSON = new JSONObject(result);
+        JSONArray jsonArray = resultAsJSON.getJSONArray("item_ids");
+
+        List<ProductResponse> recommendedProducts= new ArrayList();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            recommendedProducts.add(productService.findById(jsonArray.getLong(i)));
+        }
+
+        model.addAttribute("recommendedProducts", recommendedProducts);
         return "home/product-list";
     }
 
